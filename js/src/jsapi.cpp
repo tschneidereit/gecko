@@ -5430,15 +5430,22 @@ JS::NewReadableExternalSourceStreamObject(JSContext* cx, void* underlyingSource,
 }
 
 JS_PUBLIC_API(uint8_t)
-JS::ReadableStreamGetEmbeddingFlags(const JSObject* stream)
+JS::ReadableStreamGetEmbeddingFlags(const JSObject* streamObj)
 {
-    return stream->as<ReadableStream>().embeddingFlags();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(const_cast<JSObject*>(streamObj)))
+        streamObj = CheckedUnwrap(const_cast<JSObject*>(streamObj));
+    MOZ_ASSERT(streamObj);
+    return streamObj->as<ReadableStream>().embeddingFlags();
 }
 
 JS_PUBLIC_API(bool)
 JS::IsReadableStream(const JSObject* obj)
 {
-    return obj->is<ReadableStream>();
+    // Since we don't have a cx here, we return false if unwrappin fails.
+    if (IsWrapper(const_cast<JSObject*>(obj)))
+        obj = CheckedUnwrap(const_cast<JSObject*>(obj));
+    return obj && obj->is<ReadableStream>();
 }
 
 JS_PUBLIC_API(bool)
@@ -5460,88 +5467,156 @@ JS::IsReadableStreamBYOBReader(const JSObject* obj)
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamIsReadable(const JSObject* stream)
+JS::ReadableStreamIsReadable(const JSObject* streamObj)
 {
-    return stream->as<ReadableStream>().readable();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(const_cast<JSObject*>(streamObj)))
+        streamObj = CheckedUnwrap(const_cast<JSObject*>(streamObj));
+    MOZ_ASSERT(streamObj);
+    return streamObj->as<ReadableStream>().readable();
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamIsLocked(const JSObject* stream)
+JS::ReadableStreamIsLocked(const JSObject* streamObj)
 {
-    return stream->as<ReadableStream>().locked();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(const_cast<JSObject*>(streamObj)))
+        streamObj = CheckedUnwrap(const_cast<JSObject*>(streamObj));
+    MOZ_ASSERT(streamObj);
+    return streamObj->as<ReadableStream>().locked();
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamIsDisturbed(const JSObject* stream)
+JS::ReadableStreamIsDisturbed(const JSObject* streamObj)
 {
-    return stream->as<ReadableStream>().disturbed();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(const_cast<JSObject*>(streamObj)))
+        streamObj = CheckedUnwrap(const_cast<JSObject*>(streamObj));
+    MOZ_ASSERT(streamObj);
+    return streamObj->as<ReadableStream>().disturbed();
 }
 
 JS_PUBLIC_API(JSObject*)
-JS::ReadableStreamCancel(JSContext* cx, HandleObject streamObj, HandleValue reason)
+JS::ReadableStreamCancel(JSContext* cx, HandleObject streamObj_, HandleValue reason)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
     assertSameCompartment(cx, reason);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return nullptr;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     return ReadableStream::cancel(cx, stream, reason);
 }
 
 JS_PUBLIC_API(JS::ReadableStreamMode)
-JS::ReadableStreamGetMode(const JSObject* stream)
+JS::ReadableStreamGetMode(const JSObject* streamObj)
 {
-    return stream->as<ReadableStream>().mode();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(const_cast<JSObject*>(streamObj)))
+        streamObj = CheckedUnwrap(const_cast<JSObject*>(streamObj));
+    MOZ_ASSERT(streamObj);
+    return streamObj->as<ReadableStream>().mode();
 }
 
 JS_PUBLIC_API(JSObject*)
-JS::ReadableStreamGetReader(JSContext* cx, HandleObject streamObj, ReadableStreamReaderMode mode)
+JS::ReadableStreamGetReader(JSContext* cx, HandleObject streamObj_, ReadableStreamReaderMode mode)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return nullptr;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
-    return ReadableStream::getReader(cx, stream, mode);
+    JSObject* result = ReadableStream::getReader(cx, stream, mode);
+    MOZ_ASSERT_IF(result, IsObjectInContextCompartment(result, cx));
+    return result;
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamGetExternalUnderlyingSource(JSContext* cx, HandleObject streamObj, void** source)
+JS::ReadableStreamGetExternalUnderlyingSource(JSContext* cx, HandleObject streamObj_,
+                                              void** source)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     return ReadableStream::getExternalSource(cx, stream, source);
 }
 
 JS_PUBLIC_API(void)
-JS::ReadableStreamReleaseExternalUnderlyingSource(JSObject* stream)
+JS::ReadableStreamReleaseExternalUnderlyingSource(JSObject* streamObj)
 {
-    stream->as<ReadableStream>().releaseExternalSource();
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(streamObj))
+        streamObj = CheckedUnwrap(streamObj);
+    MOZ_ASSERT(streamObj);
+    streamObj->as<ReadableStream>().releaseExternalSource();
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamUpdateDataAvailableFromSource(JSContext* cx, JS::HandleObject streamObj,
+JS::ReadableStreamUpdateDataAvailableFromSource(JSContext* cx, JS::HandleObject streamObj_,
                                                 uint32_t availableData)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     return ReadableStream::updateDataAvailableFromSource(cx, stream, availableData);
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamTee(JSContext* cx, HandleObject streamObj,
+JS::ReadableStreamTee(JSContext* cx, HandleObject streamObj_,
                       MutableHandleObject branch1Obj, MutableHandleObject branch2Obj)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     Rooted<ReadableStream*> branch1Stream(cx);
@@ -5559,27 +5634,54 @@ JS::ReadableStreamTee(JSContext* cx, HandleObject streamObj,
 JS_PUBLIC_API(void)
 JS::ReadableStreamGetDesiredSize(JSObject* streamObj, bool* hasValue, double* value)
 {
+    // Since we don't have a cx here, we assume the unwrapping to succeed.
+    if (IsWrapper(streamObj))
+        streamObj = CheckedUnwrap(streamObj);
+    MOZ_ASSERT(streamObj);
     streamObj->as<ReadableStream>().desiredSize(hasValue, value);
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamClose(JSContext* cx, HandleObject streamObj)
+JS::ReadableStreamClose(JSContext* cx, HandleObject streamObj_)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
+    assertSameCompartment(cx, streamObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     return ReadableStream::close(cx, stream);
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamEnqueue(JSContext* cx, HandleObject streamObj, HandleValue chunk)
+JS::ReadableStreamEnqueue(JSContext* cx, HandleObject streamObj_, HandleValue chunk_)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
-    assertSameCompartment(cx, chunk);
+    assertSameCompartment(cx, streamObj_);
+    assertSameCompartment(cx, chunk_);
+
+    RootedObject streamObj(cx, streamObj_);
+    RootedValue chunk(cx, chunk_);
+    Maybe<AutoCompartment> ac;
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+        ac.emplace(cx, streamObj);
+        if (!cx->compartment()->wrap(cx, &chunk))
+            return false;
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     if (stream->mode() != JS::ReadableStreamMode::Default) {
@@ -5592,12 +5694,26 @@ JS::ReadableStreamEnqueue(JSContext* cx, HandleObject streamObj, HandleValue chu
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableByteStreamEnqueueBuffer(JSContext* cx, HandleObject streamObj, HandleObject chunkObj)
+JS::ReadableByteStreamEnqueueBuffer(JSContext* cx, HandleObject streamObj_, HandleObject chunkObj_)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
-    assertSameCompartment(cx, chunkObj);
+    assertSameCompartment(cx, streamObj_);
+    assertSameCompartment(cx, chunkObj_);
+
+    RootedObject streamObj(cx, streamObj_);
+    RootedObject chunkObj(cx, chunkObj_);
+    Maybe<AutoCompartment> ac;
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+        ac.emplace(cx, streamObj);
+        if (!cx->compartment()->wrap(cx, &chunkObj))
+            return false;
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     if (stream->mode() != JS::ReadableStreamMode::Byte) {
@@ -5624,12 +5740,26 @@ JS::ReadableByteStreamEnqueueBuffer(JSContext* cx, HandleObject streamObj, Handl
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableStreamError(JSContext* cx, HandleObject streamObj, HandleValue error)
+JS::ReadableStreamError(JSContext* cx, HandleObject streamObj_, HandleValue error_)
 {
     AssertHeapIsIdle();
     CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj);
-    assertSameCompartment(cx, error);
+    assertSameCompartment(cx, streamObj_);
+    assertSameCompartment(cx, error_);
+
+    RootedObject streamObj(cx, streamObj_);
+    RootedValue error(cx, error_);
+    Maybe<AutoCompartment> ac;
+    if (IsWrapper(streamObj)) {
+        streamObj = CheckedUnwrap(streamObj);
+        if (!streamObj) {
+            ReportAccessDenied(cx);
+            return false;
+        }
+        ac.emplace(cx, streamObj);
+        if (!cx->compartment()->wrap(cx, &error))
+            return false;
+    }
 
     Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
     return js::ReadableStream::error(cx, stream, error);

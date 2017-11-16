@@ -82,6 +82,7 @@ UNIFIED_SOURCES += [
     'testProfileStrings.cpp',
     'testPromise.cpp',
     'testPropCache.cpp',
+    'testReadableStream.cpp',
     'testRegExp.cpp',
     'testResolveRecursion.cpp',
     'tests.cpp',
@@ -137,24 +138,6 @@ if CONFIG['ENABLE_STREAMS']:
     UNIFIED_SOURCES += [
         'testReadableStream.cpp',
     ]
-
-
-if CONFIG['NIGHTLY_BUILD']:
-    # The Error interceptor only exists on Nightly.
-    UNIFIED_SOURCES += [
-        'testErrorInterceptor.cpp',
-    ]
-
-if CONFIG['JS_BUILD_BINAST'] and CONFIG['JS_STANDALONE']:
-    # Standalone builds leave the source directory untouched,
-    # which lets us run tests with the data files intact.
-    # Otherwise, in the current state of the build system,
-    # we can't have data files in js/src tests.
-    UNIFIED_SOURCES += [
-        'testBinASTReader.cpp',
-        'testBinTokenReaderTester.cpp'
-    ]
-
 
 DEFINES['EXPORT_JS_API'] = True
 
