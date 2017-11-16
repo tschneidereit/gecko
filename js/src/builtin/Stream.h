@@ -15,6 +15,12 @@ namespace js {
 
 class AutoSetNewObjectMetadata;
 
+class ReadableStreamReader : public NativeObject
+{
+  public:
+    static const Class class_;
+};
+
 class ReadableStream : public NativeObject
 {
   public:
@@ -44,8 +50,9 @@ class ReadableStream : public NativeObject
     static MOZ_MUST_USE bool error(JSContext* cx, Handle<ReadableStream*> stream,
                                    HandleValue error);
 
-    static MOZ_MUST_USE NativeObject* getReader(JSContext* cx, Handle<ReadableStream*> stream,
-                                                JS::ReadableStreamReaderMode mode);
+    static MOZ_MUST_USE ReadableStreamReader* getReader(JSContext* cx,
+                                                        Handle<ReadableStream*> stream,
+                                                        JS::ReadableStreamReaderMode mode);
 
     static MOZ_MUST_USE bool tee(JSContext* cx,
                                  Handle<ReadableStream*> stream, bool cloneForBranch2,
@@ -82,7 +89,7 @@ class ReadableStream : public NativeObject
     static const Class protoClass_;
 };
 
-class ReadableStreamDefaultReader : public NativeObject
+class ReadableStreamDefaultReader : public ReadableStreamReader
 {
   public:
     static MOZ_MUST_USE JSObject* read(JSContext* cx, Handle<ReadableStreamDefaultReader*> reader);
@@ -94,7 +101,7 @@ class ReadableStreamDefaultReader : public NativeObject
     static const Class protoClass_;
 };
 
-class ReadableStreamBYOBReader : public NativeObject
+class ReadableStreamBYOBReader : public ReadableStreamReader
 {
   public:
     static MOZ_MUST_USE JSObject* read(JSContext* cx, Handle<ReadableStreamBYOBReader*> reader,
@@ -114,7 +121,13 @@ MOZ_MUST_USE bool ReadableStreamReaderCancel(JSContext* cx, HandleObject reader,
 
 MOZ_MUST_USE bool ReadableStreamReaderReleaseLock(JSContext* cx, HandleObject reader);
 
-class ReadableStreamDefaultController : public NativeObject
+class ReadableStreamController : public NativeObject
+{
+  public:
+    static const Class class_;
+};
+
+class ReadableStreamDefaultController : public ReadableStreamController
 {
   public:
     static bool constructor(JSContext* cx, unsigned argc, Value* vp);
@@ -124,7 +137,7 @@ class ReadableStreamDefaultController : public NativeObject
     static const Class protoClass_;
 };
 
-class ReadableByteStreamController : public NativeObject
+class ReadableByteStreamController : public ReadableStreamController
 {
   public:
     bool hasExternalSource();
