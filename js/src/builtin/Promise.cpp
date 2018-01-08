@@ -2460,15 +2460,11 @@ IsPromiseSpecies(JSContext* cx, JSFunction* species)
 
 // ES2016, 25.4.5.3., steps 3-5.
 MOZ_MUST_USE bool
-js::OriginalPromiseThen(JSContext* cx, Handle<PromiseObject*> promise,
+js::OriginalPromiseThen(JSContext* cx, HandleObject promiseObj,
                         HandleValue onFulfilled, HandleValue onRejected,
                         MutableHandleObject dependent, bool createDependent)
 {
-    RootedObject promiseObj(cx, promise);
-    if (promise->compartment() != cx->compartment()) {
-        if (!cx->compartment()->wrap(cx, &promiseObj))
-            return false;
-    }
+    Rooted<PromiseObject*> promise(cx, &CheckedUnwrap(promiseObj)->as<PromiseObject>());
 
     RootedObject resultPromise(cx);
     RootedObject resolve(cx);
@@ -3040,28 +3036,24 @@ js::Promise_then(JSContext* cx, unsigned argc, Value* vp)
         return false;
     }
     RootedObject promiseObj(cx, &promiseVal.toObject());
-    Rooted<PromiseObject*> promise(cx);
 
-    bool isPromise = promiseObj->is<PromiseObject>();
-    if (isPromise) {
-        promise = &promiseObj->as<PromiseObject>();
-    } else {
-        RootedObject unwrappedPromiseObj(cx, CheckedUnwrap(promiseObj));
+    if (!promiseObj->is<PromiseObject>()) {
+        JSObject* unwrappedPromiseObj = CheckedUnwrap(promiseObj);
         if (!unwrappedPromiseObj) {
             ReportAccessDenied(cx);
             return false;
         }
         if (!unwrappedPromiseObj->is<PromiseObject>()) {
-            JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_INCOMPATIBLE_PROTO,
-                                      "Promise", "then", "value");
+            JS_ReportErrorNumberLatin1(cx, GetErrorMessage, nullptr, JSMSG_INCOMPATIBLE_PROTO,
+                                       "Promise", "then",
+                                       InformalValueTypeName(ObjectValue(*promiseObj)));
             return false;
         }
-        promise = &unwrappedPromiseObj->as<PromiseObject>();
     }
 
     // Steps 3-5.
     RootedObject resultPromise(cx);
-    if (!OriginalPromiseThen(cx, promise, onFulfilled, onRejected, &resultPromise, true))
+    if (!OriginalPromiseThen(cx, promiseObj, onFulfilled, onRejected, &resultPromise, true))
         return false;
 
     args.rval().setObject(*resultPromise);

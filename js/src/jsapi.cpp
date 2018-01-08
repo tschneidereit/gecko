@@ -5249,40 +5249,18 @@ CallOriginalPromiseThenImpl(JSContext* cx, JS::HandleObject promiseObj,
 
     MOZ_ASSERT_IF(onResolvedObj_, IsCallable(onResolvedObj_));
     MOZ_ASSERT_IF(onRejectedObj_, IsCallable(onRejectedObj_));
+    RootedObject onResolvedObj(cx, onResolvedObj_);
+    RootedObject onRejectedObj(cx, onRejectedObj_);
 
-    {
-        mozilla::Maybe<AutoCompartment> ac;
-        Rooted<PromiseObject*> promise(cx);
-        RootedObject onResolvedObj(cx, onResolvedObj_);
-        RootedObject onRejectedObj(cx, onRejectedObj_);
-        if (IsWrapper(promiseObj)) {
-            JSObject* unwrappedPromiseObj = CheckedUnwrap(promiseObj);
-            if (!unwrappedPromiseObj) {
-                ReportAccessDenied(cx);
-                return false;
-            }
-            promise = &unwrappedPromiseObj->as<PromiseObject>();
-            ac.emplace(cx, promise);
-            if (!cx->compartment()->wrap(cx, &onResolvedObj) ||
-                !cx->compartment()->wrap(cx, &onRejectedObj))
-            {
-                return false;
-            }
-        } else {
-            promise = promiseObj.as<PromiseObject>();
-        }
-
-        RootedValue onFulfilled(cx, ObjectOrNullValue(onResolvedObj));
-        RootedValue onRejected(cx, ObjectOrNullValue(onRejectedObj));
-        if (!OriginalPromiseThen(cx, promise, onFulfilled, onRejected, resultObj, createDependent))
-            return false;
+    if (IsWrapper(promiseObj) && !CheckedUnwrap(promiseObj)) {
+        ReportAccessDenied(cx);
+        return false;
     }
+    MOZ_ASSERT(CheckedUnwrap(promiseObj)->is<PromiseObject>());
 
-    if (resultObj) {
-        if (!cx->compartment()->wrap(cx, resultObj))
-            return false;
-    }
-    return true;
+    RootedValue onFulfilled(cx, ObjectOrNullValue(onResolvedObj));
+    RootedValue onRejected(cx, ObjectOrNullValue(onRejectedObj));
+    return OriginalPromiseThen(cx, promiseObj, onFulfilled, onRejected, resultObj, createDependent);
 }
 
 JS_PUBLIC_API(JSObject*)
