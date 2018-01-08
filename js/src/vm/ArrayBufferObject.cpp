@@ -1898,8 +1898,10 @@ JS_StealArrayBufferContents(JSContext* cx, HandleObject objArg)
     assertSameCompartment(cx, objArg);
 
     JSObject* obj = CheckedUnwrap(objArg);
-    if (!obj)
+    if (!obj) {
+        ReportAccessDenied(cx);
         return nullptr;
+    }
 
     if (!obj->is<ArrayBufferObject>()) {
         JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr, JSMSG_TYPED_ARRAY_BAD_ARGS);
@@ -1986,14 +1988,27 @@ JS_GetArrayBufferViewBuffer(JSContext* cx, HandleObject objArg, bool* isSharedMe
     assertSameCompartment(cx, objArg);
 
     JSObject* obj = CheckedUnwrap(objArg);
-    if (!obj)
+    if (!obj) {
+        ReportAccessDenied(cx);
         return nullptr;
+    }
     MOZ_ASSERT(obj->is<ArrayBufferViewObject>());
 
-    Rooted<ArrayBufferViewObject*> viewObject(cx, static_cast<ArrayBufferViewObject*>(obj));
-    ArrayBufferObjectMaybeShared* buffer = ArrayBufferViewObject::bufferObject(cx, viewObject);
+    Rooted<ArrayBufferViewObject*> viewObject(cx, &obj->as<ArrayBufferViewObject>());
+    ArrayBufferObjectMaybeShared* buffer;
+    {
+        AutoCompartment ac(cx, obj);
+        buffer = ArrayBufferViewObject::bufferObject(cx, viewObject);
+        if (!buffer)
+            return nullptr;
+    }
     *isSharedMemory = buffer->is<SharedArrayBufferObject>();
-    return buffer;
+
+    RootedObject wrappedBuffer(cx, buffer);
+    if (!cx->compartment()->wrap(cx, &wrappedBuffer))
+        return nullptr;
+
+    return wrappedBuffer;
 }
 
 JS_FRIEND_API(uint32_t)
