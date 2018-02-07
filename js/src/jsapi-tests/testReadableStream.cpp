@@ -23,17 +23,6 @@ NewDefaultStream(JSContext* cx, HandleObject source = nullptr, HandleFunction si
     return stream;
 }
 
-static JSObject*
-NewByteStream(JSContext* cx, double highWaterMark = 0, HandleObject proto = nullptr)
-{
-    RootedObject source(cx, JS_NewPlainObject(cx));
-    MOZ_ASSERT(source);
-
-    RootedObject stream(cx, NewReadableByteStreamObject(cx, source, highWaterMark, proto));
-    MOZ_ASSERT_IF(stream, IsReadableStream(stream));
-    return stream;
-}
-
 static bool dataRequestCBCalled = false;
 static void
 DataRequestCB(JSContext* cx, HandleObject stream, void* underlyingSource, uint8_t flags,
@@ -173,17 +162,6 @@ END_FIXTURE_TEST(StreamTestFixture,
                  testReadableStream_NewReadableStream)
 
 BEGIN_FIXTURE_TEST(StreamTestFixture,
-                   testReadableStream_NewReadableByteStream)
-{
-    RootedObject stream(cx, NewByteStream(cx));
-    CHECK(stream);
-    CHECK(ReadableStreamGetMode(stream) == ReadableStreamMode::Byte);
-    return true;
-}
-END_FIXTURE_TEST(StreamTestFixture,
-                 testReadableStream_NewReadableByteStream)
-
-BEGIN_FIXTURE_TEST(StreamTestFixture,
                    testReadableStream_ReadableStreamGetReaderDefault)
 {
     RootedObject stream(cx, NewDefaultStream(cx));
@@ -199,23 +177,6 @@ BEGIN_FIXTURE_TEST(StreamTestFixture,
 }
 END_FIXTURE_TEST(StreamTestFixture,
                  testReadableStream_ReadableStreamGetReaderDefault)
-
-BEGIN_FIXTURE_TEST(StreamTestFixture,
-                   testReadableStream_ReadableStreamGetReaderBYOB)
-{
-    RootedObject stream(cx, NewByteStream(cx));
-    CHECK(stream);
-
-    RootedObject reader(cx, ReadableStreamGetReader(cx, stream, ReadableStreamReaderMode::BYOB));
-    CHECK(reader);
-    CHECK(IsReadableStreamBYOBReader(reader));
-    CHECK(ReadableStreamIsLocked(stream));
-    CHECK(!ReadableStreamReaderIsClosed(reader));
-
-    return true;
-}
-END_FIXTURE_TEST(StreamTestFixture,
-                 testReadableStream_ReadableStreamGetReaderBYOB)
 
 BEGIN_FIXTURE_TEST(StreamTestFixture,
                    testReadableStream_ReadableStreamTee)
@@ -254,22 +215,6 @@ END_FIXTURE_TEST(StreamTestFixture,
                  testReadableStream_ReadableStreamEnqueue)
 
 BEGIN_FIXTURE_TEST(StreamTestFixture,
-                   testReadableStream_ReadableByteStreamEnqueue)
-{
-    RootedObject stream(cx, NewDefaultStream(cx));
-    CHECK(stream);
-
-    RootedObject chunk(cx, JS_NewUint8Array(cx, 42));
-    CHECK(chunk);
-    CHECK(!ReadableByteStreamEnqueueBuffer(cx, stream, chunk));
-    CHECK(JS_IsExceptionPending(cx));
-
-    return true;
-}
-END_FIXTURE_TEST(StreamTestFixture,
-                 testReadableStream_ReadableByteStreamEnqueue)
-
-BEGIN_FIXTURE_TEST(StreamTestFixture,
                    testReadableStream_ReadableStreamDefaultReaderRead)
 {
     RootedObject stream(cx, NewDefaultStream(cx));
@@ -293,89 +238,6 @@ BEGIN_FIXTURE_TEST(StreamTestFixture,
 }
 END_FIXTURE_TEST(StreamTestFixture,
                  testReadableStream_ReadableStreamDefaultReaderRead)
-
-BEGIN_FIXTURE_TEST(StreamTestFixture,
-                   testReadableStream_ReadableByteStreamDefaultReaderRead)
-{
-    RootedObject stream(cx, NewByteStream(cx));
-    CHECK(stream);
-
-    RootedObject reader(cx, ReadableStreamGetReader(cx, stream, ReadableStreamReaderMode::Default));
-    CHECK(reader);
-
-    RootedObject request(cx, ReadableStreamDefaultReaderRead(cx, reader));
-    CHECK(request);
-    CHECK(IsPromiseObject(request));
-    CHECK(GetPromiseState(request) == PromiseState::Pending);
-
-    size_t length = sizeof(test_buffer_data);
-    RootedObject buffer(cx, JS_NewArrayBufferWithExternalContents(cx, length, test_buffer_data));
-    CHECK(buffer);
-    RootedObject chunk(cx, JS_NewUint8ArrayWithBuffer(cx, buffer, 0, length));
-    CHECK(chunk);
-    bool isShared;
-    CHECK(!JS_IsDetachedArrayBufferObject(buffer));
-
-    CHECK(ReadableByteStreamEnqueueBuffer(cx, stream, chunk));
-
-    CHECK(JS_IsDetachedArrayBufferObject(buffer));
-    RootedObject readChunk(cx, GetReadChunk(cx, request));
-    CHECK(JS_IsUint8Array(readChunk));
-    void* readBufferData;
-    {
-        JS::AutoCheckCannotGC autoNoGC(cx);
-        readBufferData = JS_GetArrayBufferViewData(readChunk, &isShared, autoNoGC);
-    }
-    CHECK(readBufferData);
-    CHECK(!memcmp(test_buffer_data, readBufferData, length));
-
-    return true;
-}
-END_FIXTURE_TEST(StreamTestFixture,
-                 testReadableStream_ReadableByteStreamDefaultReaderRead)
-
-BEGIN_FIXTURE_TEST(StreamTestFixture,
-                   testReadableStream_ReadableByteStreamBYOBReaderRead)
-{
-    RootedObject stream(cx, NewByteStream(cx));
-    CHECK(stream);
-
-    RootedObject reader(cx, ReadableStreamGetReader(cx, stream, ReadableStreamReaderMode::BYOB));
-    CHECK(reader);
-
-    size_t length = sizeof(test_buffer_data);
-    RootedObject targetArray(cx, JS_NewUint8Array(cx, length));
-    bool isShared;
-
-    RootedObject request(cx, ReadableStreamBYOBReaderRead(cx, reader, targetArray));
-    CHECK(request);
-    CHECK(IsPromiseObject(request));
-    CHECK(GetPromiseState(request) == PromiseState::Pending);
-    CHECK(JS_IsDetachedArrayBufferObject(JS_GetArrayBufferViewBuffer(cx, targetArray, &isShared)));
-
-    RootedObject buffer(cx, JS_NewArrayBufferWithExternalContents(cx, length, test_buffer_data));
-    CHECK(buffer);
-    CHECK(!JS_IsDetachedArrayBufferObject(buffer));
-
-    CHECK(ReadableByteStreamEnqueueBuffer(cx, stream, buffer));
-
-    CHECK(JS_IsDetachedArrayBufferObject(buffer));
-    RootedObject readChunk(cx, GetReadChunk(cx, request));
-    CHECK(JS_IsUint8Array(readChunk));
-    void* readBufferData;
-    {
-        JS::AutoCheckCannotGC autoNoGC(cx);
-        readBufferData = JS_GetArrayBufferViewData(readChunk, &isShared, autoNoGC);
-    }
-    CHECK(readBufferData);
-    CHECK(!memcmp(test_buffer_data, readBufferData, length));
-    // TODO: eliminate the memcpy that happens here.
-//    CHECK(readBufferData == test_buffer_data);
-
-    return true;
-}
-END_FIXTURE_TEST(StreamTestFixture,
-                 testReadableStream_ReadableByteStreamBYOBReaderRead)
 
 BEGIN_FIXTURE_TEST(StreamTestFixture,
                    testReadableStream_ReadableStreamDefaultReaderClose)
@@ -707,22 +569,6 @@ BEGIN_FIXTURE_TEST(ReadFromExternalSourceFixture,
 }
 END_FIXTURE_TEST(ReadFromExternalSourceFixture,
                  testReadableStream_ExternalSourceReadDefaultWithDataAvailable)
-
-BEGIN_FIXTURE_TEST(ReadFromExternalSourceFixture,
-                   testReadableStream_ExternalSourceReadBYOBWithoutDataAvailable)
-{
-    return readWithoutDataAvailable("r = stream.getReader({mode: 'byob'}); r.read(new Uint8Array(63))", "r.read(new Uint8Array(10))", 10);
-}
-END_FIXTURE_TEST(ReadFromExternalSourceFixture,
-                 testReadableStream_ExternalSourceReadBYOBWithoutDataAvailable)
-
-BEGIN_FIXTURE_TEST(ReadFromExternalSourceFixture,
-                   testReadableStream_ExternalSourceReadBYOBWithDataAvailable)
-{
-    return readWithDataAvailable("r = stream.getReader({mode: 'byob'}); r.read(new Uint8Array(10))", 10);
-}
-END_FIXTURE_TEST(ReadFromExternalSourceFixture,
-                 testReadableStream_ExternalSourceReadBYOBWithDataAvailable)
 
 // Cross-global tests:
 BEGIN_FIXTURE_TEST(StreamTestFixture,

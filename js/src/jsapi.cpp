@@ -5325,27 +5325,6 @@ JS::NewReadableDefaultStreamObject(JSContext* cx,
     return ReadableStream::createDefaultStream(cx, sourceVal, sizeVal, highWaterMarkVal, proto);
 }
 
-JS_PUBLIC_API(JSObject*)
-JS::NewReadableByteStreamObject(JSContext* cx,
-                                JS::HandleObject underlyingSource /* = nullptr */,
-                                double highWaterMark /* = 1 */,
-                                JS::HandleObject proto /* = nullptr */)
-{
-    MOZ_ASSERT(!cx->runtime()->isAtomsCompartment(cx->compartment()));
-    AssertHeapIsIdle();
-    CHECK_REQUEST(cx);
-
-    RootedObject source(cx, underlyingSource);
-    if (!source) {
-        source = NewBuiltinClassInstance<PlainObject>(cx);
-        if (!source)
-            return nullptr;
-    }
-    RootedValue sourceVal(cx, ObjectValue(*source));
-    RootedValue highWaterMarkVal(cx, NumberValue(highWaterMark));
-    return ReadableStream::createByteStream(cx, sourceVal, highWaterMarkVal, proto);
-}
-
 extern JS_PUBLIC_API(void)
 JS::SetReadableStreamCallbacks(JSContext* cx,
                                JS::RequestReadableStreamDataCallback dataRequestCallback,
@@ -5429,19 +5408,13 @@ JS::IsReadableStream(const JSObject* obj)
 JS_PUBLIC_API(bool)
 JS::IsReadableStreamReader(const JSObject* obj)
 {
-    return obj->is<ReadableStreamDefaultReader>() || obj->is<ReadableStreamBYOBReader>();
+    return obj->is<ReadableStreamDefaultReader>();
 }
 
 JS_PUBLIC_API(bool)
 JS::IsReadableStreamDefaultReader(const JSObject* obj)
 {
     return obj->is<ReadableStreamDefaultReader>();
-}
-
-JS_PUBLIC_API(bool)
-JS::IsReadableStreamBYOBReader(const JSObject* obj)
-{
-    return obj->is<ReadableStreamBYOBReader>();
 }
 
 JS_PUBLIC_API(bool)
@@ -5672,52 +5645,6 @@ JS::ReadableStreamEnqueue(JSContext* cx, HandleObject streamObj_, HandleValue ch
 }
 
 JS_PUBLIC_API(bool)
-JS::ReadableByteStreamEnqueueBuffer(JSContext* cx, HandleObject streamObj_, HandleObject chunkObj_)
-{
-    AssertHeapIsIdle();
-    CHECK_REQUEST(cx);
-    assertSameCompartment(cx, streamObj_);
-    assertSameCompartment(cx, chunkObj_);
-
-    RootedObject streamObj(cx, streamObj_);
-    RootedObject chunkObj(cx, chunkObj_);
-    Maybe<AutoCompartment> ac;
-    if (IsWrapper(streamObj)) {
-        streamObj = CheckedUnwrap(streamObj);
-        if (!streamObj) {
-            ReportAccessDenied(cx);
-            return false;
-        }
-        ac.emplace(cx, streamObj);
-        if (!cx->compartment()->wrap(cx, &chunkObj))
-            return false;
-    }
-
-    Rooted<ReadableStream*> stream(cx, &streamObj->as<ReadableStream>());
-    if (stream->mode() != JS::ReadableStreamMode::Byte) {
-        JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
-                                  JSMSG_READABLESTREAM_NOT_BYTE_STREAM_CONTROLLER,
-                                  "JS::ReadableByteStreamEnqueueBuffer");
-        return false;
-    }
-
-    Rooted<ArrayBufferObject*> buffer(cx);
-    if (chunkObj->is<ArrayBufferViewObject>()) {
-        bool dummy;
-        buffer = &JS_GetArrayBufferViewBuffer(cx, chunkObj, &dummy)->as<ArrayBufferObject>();
-    } else if (chunkObj->is<ArrayBufferObject>()) {
-        buffer = &chunkObj->as<ArrayBufferObject>();
-    } else {
-        JS_ReportErrorNumberASCII(cx, GetErrorMessage, nullptr,
-                                  JSMSG_READABLEBYTESTREAMCONTROLLER_BAD_CHUNK,
-                                  "JS::ReadableByteStreamEnqueueBuffer");
-        return false;
-    }
-
-    return ReadableStream::enqueueBuffer(cx, stream, buffer);
-}
-
-JS_PUBLIC_API(bool)
 JS::ReadableStreamError(JSContext* cx, HandleObject streamObj_, HandleValue error_)
 {
     AssertHeapIsIdle();
@@ -5779,19 +5706,6 @@ JS::ReadableStreamDefaultReaderRead(JSContext* cx, HandleObject readerObj)
 
     Rooted<ReadableStreamDefaultReader*> reader(cx, &readerObj->as<ReadableStreamDefaultReader>());
     return js::ReadableStreamDefaultReader::read(cx, reader);
-}
-
-JS_PUBLIC_API(JSObject*)
-JS::ReadableStreamBYOBReaderRead(JSContext* cx, HandleObject readerObj, HandleObject viewObj)
-{
-    AssertHeapIsIdle();
-    CHECK_REQUEST(cx);
-    assertSameCompartment(cx, readerObj);
-    assertSameCompartment(cx, viewObj);
-
-    Rooted<ReadableStreamBYOBReader*> reader(cx, &readerObj->as<ReadableStreamBYOBReader>());
-    Rooted<ArrayBufferViewObject*> view(cx, &viewObj->as<ArrayBufferViewObject>());
-    return js::ReadableStreamBYOBReader::read(cx, reader, view);
 }
 
 JS_PUBLIC_API(void)

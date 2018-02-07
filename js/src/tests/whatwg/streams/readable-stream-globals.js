@@ -41,7 +41,6 @@ async function test() {
 
         byteStreamsSupported = true;
     } catch (e) {
-        print(e)
     }
 
     let chunk = { name: "chunk" };
@@ -318,7 +317,7 @@ async function test() {
     try {
         let byobRequest = OtherBYOBRequestGetter.call(controller);
     } catch (e) {
-        print(e);
+        print(e, '\n', e.stack);
     }
     controller.enqueue(new Uint8Array([1, 2, 3, 4]));
     result = await request;

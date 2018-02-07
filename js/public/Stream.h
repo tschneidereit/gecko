@@ -186,16 +186,6 @@ NewReadableDefaultStreamObject(JSContext* cx, HandleObject underlyingSource = nu
 
 /**
  * Returns a new instance of the ReadableStream builtin class in the current
- * compartment, configured as a byte stream.
- * If a |proto| is passed, that gets set as the instance's [[Prototype]]
- * instead of the original value of |ReadableStream.prototype|.
- */
-extern JS_PUBLIC_API(JSObject*)
-NewReadableByteStreamObject(JSContext* cx, HandleObject underlyingSource = nullptr,
-                            double highWaterMark = 0, HandleObject proto = nullptr);
-
-/**
- * Returns a new instance of the ReadableStream builtin class in the current
  * compartment, with the right slot layout. If a |proto| is passed, that gets
  * set as the instance's [[Prototype]] instead of the original value of
  * |ReadableStream.prototype|.
@@ -296,13 +286,6 @@ IsReadableStreamReader(const JSObject* obj);
  */
 extern JS_PUBLIC_API(bool)
 IsReadableStreamDefaultReader(const JSObject* obj);
-
-/**
- * Returns true if the given object is an unwrapped
- * ReadableStreamBYOBReader object, false otherwise.
- */
-extern JS_PUBLIC_API(bool)
-IsReadableStreamBYOBReader(const JSObject* obj);
 
 enum class ReadableStreamMode {
     Default,
@@ -437,24 +420,6 @@ extern JS_PUBLIC_API(bool)
 ReadableStreamEnqueue(JSContext* cx, HandleObject stream, HandleValue chunk);
 
 /**
- * Enqueues the given buffer as a chunk in the given ReadableStream.
- *
- * Throws a TypeError and returns false if the enqueing operation fails.
- *
- * Note: This is semantically equivalent to the |enqueue| method on
- * the stream controller's prototype in JS. We expose it with the stream
- * itself as a target for simplicity. Additionally, the JS version only
- * takes typed arrays and ArrayBufferView instances as arguments, whereas
- * this takes an ArrayBuffer, obviating the need to wrap it into a typed
- * array.
- *
- * Asserts that |stream| is an unwrapped ReadableStream instance and |buffer|
- * an unwrapped ArrayBuffer instance.
- */
-extern JS_PUBLIC_API(bool)
-ReadableByteStreamEnqueueBuffer(JSContext* cx, HandleObject stream, HandleObject buffer);
-
-/**
  * Errors the given ReadableStream, causing all future interactions to fail
  * with the given error value.
  *
@@ -503,19 +468,6 @@ ReadableStreamReaderReleaseLock(JSContext* cx, HandleObject reader);
  */
 extern JS_PUBLIC_API(JSObject*)
 ReadableStreamDefaultReaderRead(JSContext* cx, HandleObject reader);
-
-/**
- * Requests a read from the reader's associated ReadableStream into the given
- * ArrayBufferView and returns the resulting PromiseObject.
- *
- * Returns a Promise that's resolved with the read result once available or
- * rejected immediately if the stream is errored or the operation failed.
- *
- * Asserts that |reader| is an unwrapped ReadableStreamDefaultReader and
- * |view| an unwrapped typed array or DataView instance.
- */
-extern JS_PUBLIC_API(JSObject*)
-ReadableStreamBYOBReaderRead(JSContext* cx, HandleObject reader, HandleObject view);
 
 } // namespace JS
 

@@ -27,9 +27,6 @@ class ReadableStream : public NativeObject
     static ReadableStream* createDefaultStream(JSContext* cx, HandleValue underlyingSource,
                                                HandleValue size, HandleValue highWaterMark,
                                                HandleObject proto = nullptr);
-    static ReadableStream* createByteStream(JSContext* cx, HandleValue underlyingSource,
-                                            HandleValue highWaterMark,
-                                            HandleObject proto = nullptr);
     static ReadableStream* createExternalSourceStream(JSContext* cx, void* underlyingSource,
                                                       uint8_t flags, HandleObject proto = nullptr);
 
@@ -61,8 +58,6 @@ class ReadableStream : public NativeObject
 
     static MOZ_MUST_USE bool enqueue(JSContext* cx, Handle<ReadableStream*> stream,
                                      HandleValue chunk);
-    static MOZ_MUST_USE bool enqueueBuffer(JSContext* cx, Handle<ReadableStream*> stream,
-                                           Handle<ArrayBufferObject*> chunk);
     static MOZ_MUST_USE bool getExternalSource(JSContext* cx, Handle<ReadableStream*> stream,
                                                void** source);
     void releaseExternalSource();
@@ -101,19 +96,6 @@ class ReadableStreamDefaultReader : public ReadableStreamReader
     static const Class protoClass_;
 };
 
-class ReadableStreamBYOBReader : public ReadableStreamReader
-{
-  public:
-    static MOZ_MUST_USE JSObject* read(JSContext* cx, Handle<ReadableStreamBYOBReader*> reader,
-                                       Handle<ArrayBufferViewObject*> view);
-
-    static bool constructor(JSContext* cx, unsigned argc, Value* vp);
-    static const ClassSpec classSpec_;
-    static const Class class_;
-    static const ClassSpec protoClassSpec_;
-    static const Class protoClass_;
-};
-
 bool ReadableStreamReaderIsClosed(const JSObject* reader);
 
 MOZ_MUST_USE bool ReadableStreamReaderCancel(JSContext* cx, HandleObject reader,
@@ -142,16 +124,6 @@ class ReadableByteStreamController : public ReadableStreamController
   public:
     bool hasExternalSource();
 
-    static bool constructor(JSContext* cx, unsigned argc, Value* vp);
-    static const ClassSpec classSpec_;
-    static const Class class_;
-    static const ClassSpec protoClassSpec_;
-    static const Class protoClass_;
-};
-
-class ReadableStreamBYOBRequest : public NativeObject
-{
-  public:
     static bool constructor(JSContext* cx, unsigned argc, Value* vp);
     static const ClassSpec classSpec_;
     static const Class class_;
