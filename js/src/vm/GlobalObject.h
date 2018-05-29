@@ -670,6 +670,13 @@ class GlobalObject : public NativeObject
         return &global->getConstructor(JSProto_Promise).toObject().as<JSFunction>();
     }
 
+    static JSFunction*
+    getOrCreateWeakCellConstructor(JSContext* cx, Handle<GlobalObject*> global) {
+        if (!ensureConstructor(cx, global, JSProto_WeakCell))
+            return nullptr;
+        return &global->getConstructor(JSProto_WeakCell).toObject().as<JSFunction>();
+    }
+
     static NativeObject* getIntrinsicsHolder(JSContext* cx, Handle<GlobalObject*> global);
 
     bool maybeExistingIntrinsicValue(PropertyName* name, Value* vp) {

@@ -106,6 +106,9 @@ IF_INTL(real,imaginary) (Intl,                  InitIntlClass,          CLASP(In
 IF_BDATA(real,imaginary)(TypedObject,           InitTypedObjectModuleObject,   OCLASP(TypedObjectModule)) \
     real(Reflect,               InitReflect,            nullptr) \
 IF_SIMD(real,imaginary)(SIMD,                   InitSimdClass, OCLASP(Simd)) \
+    real(WeakFactory,           InitViaClassSpec,       OCLASP(WeakFactory)) \
+    real(WeakCell,              InitViaClassSpec,       OCLASP(WeakCell)) \
+    real(WeakRef,               InitViaClassSpec,       OCLASP(WeakRef)) \
     real(WeakSet,               InitWeakSetClass,       OCLASP(WeakSet)) \
     real(TypedArray,            InitViaClassSpec,       &js::TypedArrayObject::sharedTypedArrayPrototypeClass) \
 IF_SAB(real,imaginary)(Atomics, InitAtomicsClass, OCLASP(Atomics)) \

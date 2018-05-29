@@ -944,7 +944,8 @@ class JS_PUBLIC_API(ContextOptions) {
         werror_(false),
         strictMode_(false),
         extraWarnings_(false),
-        streams_(false)
+        streams_(false),
+        weakRef_(false)
 #ifdef FUZZING
         , fuzzing_(false)
 #endif
@@ -999,6 +1000,16 @@ class JS_PUBLIC_API(ContextOptions) {
     }
     ContextOptions& toggleStreams() {
         streams_ = !streams_;
+        return *this;
+    }
+
+    bool weakRef() const { return weakRef_; }
+    ContextOptions& setWeakRef(bool flag) {
+        weakRef_ = flag;
+        return *this;
+    }
+    ContextOptions& toggleWeakRef() {
+        weakRef_ = !weakRef_;
         return *this;
     }
 
@@ -1137,6 +1148,7 @@ class JS_PUBLIC_API(ContextOptions) {
     bool strictMode_ : 1;
     bool extraWarnings_ : 1;
     bool streams_: 1;
+    bool weakRef_: 1;
 #ifdef FUZZING
     bool fuzzing_ : 1;
 #endif

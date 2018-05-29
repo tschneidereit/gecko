@@ -25,6 +25,7 @@
 #include "builtin/Symbol.h"
 #include "builtin/TypedObject.h"
 #include "builtin/WeakMapObject.h"
+#include "builtin/WeakRefObject.h"
 #include "builtin/WeakSetObject.h"
 #include "gc/FreeOp.h"
 #include "js/ProtoKey.h"
@@ -111,6 +112,12 @@ GlobalObject::skipDeselectedConstructor(JSContext* cx, JSProtoKey key)
       case JSProto_Atomics:
       case JSProto_SharedArrayBuffer:
         return !cx->compartment()->creationOptions().getSharedMemoryAndAtomicsEnabled();
+
+      case JSProto_WeakFactory:
+      case JSProto_WeakCell:
+      case JSProto_WeakRef:
+        return !cx->options().weakRef();
+
       default:
         return false;
     }

@@ -485,6 +485,7 @@ static bool enableWasmIon = false;
 static bool enableTestWasmAwaitTier2 = false;
 static bool enableAsyncStacks = false;
 static bool enableStreams = false;
+static bool enableWeakRef = false;
 static bool enableArrayProtoValues = true;
 #ifdef JS_GC_ZEAL
 static uint32_t gZealBits = 0;
@@ -8298,6 +8299,7 @@ SetContextOptions(JSContext* cx, const OptionParser& op)
     enableTestWasmAwaitTier2 = op.getBoolOption("test-wasm-await-tier2");
     enableAsyncStacks = !op.getBoolOption("no-async-stacks");
     enableStreams = op.getBoolOption("enable-streams");
+    enableWeakRef = op.getBoolOption("enable-weakref");
     enableArrayProtoValues = !op.getBoolOption("no-array-proto-values");
 
     JS::ContextOptionsRef(cx).setBaseline(enableBaseline)
@@ -8310,6 +8312,7 @@ SetContextOptions(JSContext* cx, const OptionParser& op)
                              .setNativeRegExp(enableNativeRegExp)
                              .setAsyncStack(enableAsyncStacks)
                              .setStreams(enableStreams)
+                             .setWeakRef(enableWeakRef)
                              .setArrayProtoValues(enableArrayProtoValues);
 
     if (op.getBoolOption("no-unboxed-objects"))
@@ -8611,6 +8614,7 @@ SetWorkerContextOptions(JSContext* cx)
                              .setTestWasmAwaitTier2(enableTestWasmAwaitTier2)
                              .setNativeRegExp(enableNativeRegExp)
                              .setStreams(enableStreams)
+                             .setWeakRef(enableWeakRef)
                              .setArrayProtoValues(enableArrayProtoValues);
     cx->runtime()->setOffthreadIonCompilationEnabled(offthreadCompilation);
     cx->runtime()->profilingScripts = enableCodeCoverage || enableDisassemblyDumps;
@@ -8854,6 +8858,7 @@ main(int argc, char** argv, char** envp)
         || !op.addBoolOption('\0', "no-native-regexp", "Disable native regexp compilation")
         || !op.addBoolOption('\0', "no-unboxed-objects", "Disable creating unboxed plain objects")
         || !op.addBoolOption('\0', "enable-streams", "Enable WHATWG Streams")
+        || !op.addBoolOption('\0', "enable-weakref", "Enable WeakRef")
         || !op.addBoolOption('\0', "no-array-proto-values", "Remove Array.prototype.values")
 #ifdef ENABLE_SHARED_ARRAY_BUFFER
         || !op.addStringOption('\0', "shared-memory", "on/off",
